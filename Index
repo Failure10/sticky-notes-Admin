@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Portal - Render Sync</title>
+  
+  <style>
+    /* Exact same styles as index.html above, plus button colors */
+    :root {
+      --bg-gradient: linear-gradient(135deg, #0f172a, #1e1b4b, #311042);
+      --panel-bg: rgba(255, 255, 255, 0.05);
+      --panel-border: rgba(255, 255, 255, 0.12);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #6366f1;
+      --accent-glow: rgba(99, 102, 241, 0.35);
+      --input-bg: rgba(255, 255, 255, 0.07);
+      --danger: #f43f5e;
+      --warning: #f59e0b;
+    }
+    
+    [data-theme="light-glass"] {
+      --bg-gradient: linear-gradient(135deg, #cbd5e1, #e2e8f0, #f1f5f9);
+      --panel-bg: rgba(255, 255, 255, 0.45);
+      --panel-border: rgba(255, 255, 255, 0.5);
+      --text-main: #334155;
+      --text-muted: #64748b;
+      --accent: #4f46e5;
+      --accent-glow: rgba(79, 70, 229, 0.15);
+      --input-bg: rgba(255, 255, 255, 0.5);
+    }
+
+    [data-theme="neon-aurora"] {
+      --bg-gradient: linear-gradient(135deg, #030712, #064e3b, #022c22);
+      --panel-bg: rgba(16, 185, 129, 0.08);
+      --panel-border: rgba(52, 211, 153, 0.25);
+      --text-main: #ecfdf5;
+      --text-muted: #6ee7b7;
+      --accent: #10b981;
+      --input-bg: rgba(6, 78, 59, 0.3);
+    }
+
+    [data-theme="cyberpunk"] {
+      --bg-gradient: linear-gradient(135deg, #180828, #2a0845, #4a0040);
+      --panel-bg: rgba(236, 72, 153, 0.1);
+      --panel-border: rgba(244, 114, 182, 0.35);
+      --text-main: #fdf2f8;
+      --text-muted: #f472b6;
+      --accent: #f43f5e;
+      --input-bg: rgba(88, 28, 135, 0.3);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; transition: background 0.3s; }
+    body { min-height: 100vh; background: var(--bg-gradient); color: var(--text-main); display: flex; justify-content: center; align-items: center; padding: 20px; }
+    .glass-container { width: 100%; max-width: 900px; background: var(--panel-bg); backdrop-filter: blur(16px); border: 1px solid var(--panel-border); border-radius: 24px; padding: 32px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .theme-selector select { background: var(--input-bg); color: var(--text-main); border: 1px solid var(--panel-border); padding: 10px; border-radius: 12px; }
+    .nav-tabs { display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 1px solid var(--panel-border); padding-bottom: 12px; }
+    .tab-btn { background: transparent; border: none; color: var(--text-muted); font-size: 1rem; font-weight: 600; padding: 8px 16px; border-radius: 10px; cursor: pointer; }
+    .tab-btn.active { color: var(--text-main); background: var(--input-bg); border: 1px solid var(--panel-border); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; }
+    input, textarea { width: 100%; padding: 12px; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 12px; color: var(--text-main); outline: none; }
+    input:focus, textarea:focus { border-color: var(--accent); }
+    .dob-group { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    textarea { resize: vertical; min-height: 100px; }
+    .btn { padding: 10px 18px; background: var(--accent); color: #fff; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; }
+    .btn-danger { background: var(--danger); }
+    .btn-warning { background: var(--warning); color: #000; }
+    .records-list { display: flex; flex-direction: column; gap: 12px; max-height: 450px; overflow-y: auto; }
+    .record-card { background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; }
+    .record-info { flex-grow: 1; }
+    .record-actions { display: flex; gap: 8px; align-items: flex-start; }
+    #loadingMsg { text-align: center; color: var(--text-muted); }
+  </style>
+</head>
+<body>
+
+  <div class="glass-container">
+    <header>
+      <div>
+        <h1>Admin Console</h1>
+        <p style="font-size: 0.8rem; color: var(--text-muted)">Edit & Delete (Render Backend)</p>
+      </div>
+      <div class="theme-selector">
+        <select id="themeSelect">
+          <option value="dark-glass">Dark Glass</option>
+          <option value="light-glass">Light Glass (Soft)</option>
+          <option value="neon-aurora">Neon Aurora</option>
+          <option value="cyberpunk">Cyberpunk</option>
+        </select>
+      </div>
+    </header>
+
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('manage')">Manage Records</button>
+      <button class="tab-btn" onclick="switchTab('add')">Add / Edit Record</button>
+    </div>
+
+    <!-- Manage Records -->
+    <div id="manageTab" class="tab-content active">
+      <div id="loadingMsg">Loading from Render...</div>
+      <div class="records-list" id="adminRecordsList"></div>
+    </div>
+
+    <!-- Edit Form -->
+    <div id="addTab" class="tab-content">
+      <form id="adminForm">
+        <input type="hidden" id="editRecordId" value="" />
+        <div class="form-group">
+          <label>Patient ID</label>
+          <input type="text" id="patientId" readonly />
+        </div>
+        <div class="form-group">
+          <label>Patient Name</label>
+          <input type="text" id="patientName" required />
+        </div>
+        <div class="form-group">
+          <label>Date of Birth</label>
+          <div class="dob-group">
+            <input type="number" id="dobMonth" placeholder="MM" required />
+            <input type="number" id="dobDay" placeholder="DD" required />
+            <input type="number" id="dobYear" placeholder="YYYY" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Clinical Notes</label>
+          <textarea id="patientNotes" required></textarea>
+        </div>
+        <button type="submit" class="btn" id="formSubmitBtn" style="width:100%">Save Record</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = 'https://sticky-notes-back-end.onrender.com/api/notes';
+    let globalDataCache = [];
+    let nextId = 101;
+
+    // Theme logic
+    const themeSelect = document.getElementById('themeSelect');
+    function applyTheme(theme) {
+      if (theme === 'dark-glass') document.documentElement.removeAttribute('data-theme');
+      else document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('selectedTheme', theme);
+    }
+    themeSelect.addEventListener('change', (e) => applyTheme(e.target.value));
+    applyTheme(localStorage.getItem('selectedTheme') || 'dark-glass');
+    themeSelect.value = localStorage.getItem('selectedTheme') || 'dark-glass';
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      if (tab === 'manage') {
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+        document.getElementById('manageTab').classList.add('active');
+        fetchRecords();
+      } else {
+        document.querySelectorAll('.tab-btn')[1].classList.add('active');
+        document.getElementById('addTab').classList.add('active');
+      }
+    }
+
+    async function fetchRecords() {
+      const list = document.getElementById('adminRecordsList');
+      const loading = document.getElementById('loadingMsg');
+      list.innerHTML = '';
+      loading.style.display = 'block';
+
+      try {
+        const res = await fetch(API_URL);
+        const records = await res.json();
+        globalDataCache = records;
+        loading.style.display = 'none';
+
+        if (records.length === 0) {
+          list.innerHTML = '<p style="color:var(--text-muted)">No records found.</p>';
+          document.getElementById('patientId').value = 'P-101';
+          return;
+        }
+
+        let highest = 100;
+        records.forEach(r => {
+          const num = parseInt(r.patientId.replace('P-', ''), 10);
+          if (num > highest) highest = num;
+        });
+        nextId = highest + 1;
+        if (!document.getElementById('editRecordId').value) {
+          document.getElementById('patientId').value = `P-${nextId}`;
+        }
+
+        records.forEach(r => {
+          const card = document.createElement('div');
+          card.className = 'record-card';
+          card.innerHTML = `
+            <div class="record-info">
+              <div style="font-weight:600; font-size:1.1rem;">${escapeHtml(r.name)} <span style="color:var(--accent); font-size:0.85rem;">(${escapeHtml(r.patientId)})</span></div>
+              <div style="font-size:0.8rem; color:var(--text-muted); margin:4px 0;">DOB: ${escapeHtml(r.dob)}</div>
+              <div style="font-size:0.9rem; white-space:pre-wrap;">${escapeHtml(r.notes)}</div>
+            </div>
+            <div class="record-actions">
+              <button class="btn btn-warning" onclick="editRecord('${r.id}')">Edit</button>
+              <button class="btn btn-danger" onclick="deleteRecord('${r.id}')">Delete</button>
+            </div>
+          `;
+          list.appendChild(card);
+        });
+      } catch (err) {
+        loading.innerHTML = 'Error loading records from Render.';
+      }
+    }
+
+    window.editRecord = function(id) {
+      const record = globalDataCache.find(r => r.id === id);
+      if (!record) return;
+
+      document.getElementById('editRecordId').value = id;
+      document.getElementById('patientId').value = record.patientId;
+      document.getElementById('patientName').value = record.name;
+      
+      const dobParts = record.dob.split('/');
+      if (dobParts.length === 3) {
+        document.getElementById('dobMonth').value = dobParts[0];
+        document.getElementById('dobDay').value = dobParts[1];
+        document.getElementById('dobYear').value = dobParts[2];
+      }
+
+      document.getElementById('patientNotes').value = record.notes;
+      document.getElementById('formSubmitBtn').innerText = "Update Record";
+      switchTab('add');
+    };
+
+    window.deleteRecord = async function(id) {
+      if (confirm("Delete this record permanently?")) {
+        try {
+          await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+          fetchRecords();
+        } catch (err) { alert("Failed to delete."); }
+      }
+    };
+
+    document.getElementById('adminForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const id = document.getElementById('editRecordId').value;
+      const payload = {
+        patientId: document.getElementById('patientId').value,
+        name: document.getElementById('patientName').value.trim(),
+        dob: `${document.getElementById('dobMonth').value}/${document.getElementById('dobDay').value}/${document.getElementById('dobYear').value}`,
+        notes: document.getElementById('patientNotes').value.trim()
+      };
+
+      try {
+        if (id) {
+          // PUT to update
+          await fetch(`${API_URL}/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        } else {
+          // POST to create
+          await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        }
+        
+        document.getElementById('adminForm').reset();
+        document.getElementById('editRecordId').value = '';
+        document.getElementById('formSubmitBtn').innerText = "Save Record";
+        switchTab('manage');
+      } catch (err) {
+        alert("Failed to save record to Render.");
+      }
+    });
+
+    fetchRecords();
+    function escapeHtml(str) { return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[m]); }
+  </script>
+</body>
+</html>
